@@ -25,6 +25,25 @@ void add_history(char* unused) {}
 #include <editline/readline.h>
 #endif
 
+
+// this evaluates an AST. recursively calling itself to evaluate child ASTs
+long eval (mpc_ast_t* t) {
+  if (strstr(t->tag, "number")) {
+    return atoi(t->contents);
+  }
+
+  int count = 30;
+
+  for (int i = 0; i < count; i = i + 3)
+  {
+    mpc_ast_t* left = t->children[i];
+    char op = t->children[i + 1]
+    mpc_ast_t* left = t->children[i + 2];
+  }
+
+  return 0;
+}
+
 int main(int argc, char const *argv[]) {
   // Create parsers
   mpc_parser_t* Number = mpc_new("number");
@@ -37,7 +56,7 @@ int main(int argc, char const *argv[]) {
     "                                                       \
       number     : /-?[0-9.]+/ ;                             \
       operator   : '+' | '-' | '*' | '/' ;                  \
-      expr       : (<number> (<operator> <number>?)* <number>?)+ | '(' <expr>+ ')';  \
+      expr       : (<number> (<operator> <number>)?)+ | '(' <expr>+ (<operator> <expr>+)* ')';  \
       lispy      : /^/ <expr>+ (<operator> <expr>+)* /$/ ;             \
     ",
     Number, Operator, Expr, Lispy);
@@ -63,6 +82,9 @@ int main(int argc, char const *argv[]) {
 
     if (mpc_parse("<stdin>", input, Lispy, &r)) {
       mpc_ast_print(r.output);
+      long result = eval(r.output);
+      printf("%li\n", result);
+
       mpc_ast_delete(r.output);
     } else {
       // print error
