@@ -26,22 +26,36 @@ void add_history(char* unused) {}
 #endif
 
 
+long eval_op(long x, char* op, long y) {
+  if (strcmp(op, "+") == 0) { return x + y; }
+  if (strcmp(op, "-") == 0) { return x - y; }
+  if (strcmp(op, "*") == 0) { return x * y; }
+  if (strcmp(op, "/") == 0) { return x / y; }
+  return 0;
+}
+
+
 // this evaluates an AST. recursively calling itself to evaluate child ASTs
+// this... works... somehow.. hmm.
 long eval (mpc_ast_t* t) {
   if (strstr(t->tag, "number")) {
     return atoi(t->contents);
   }
 
-  int count = 30;
+  if (strstr(t->tag, ))
 
-  for (int i = 0; i < count; i = i + 3)
+  long x = eval(t->children[1]);
+
+  int count = t->children_num;
+
+  for (int i = 2; i < (count - 1); i = i + 2)
   {
-    mpc_ast_t* left = t->children[i];
-    char op = t->children[i + 1]
-    mpc_ast_t* left = t->children[i + 2];
+    char* op = t->children[i]->contents;
+    mpc_ast_t* right = t->children[i + 1];
+    x = eval_op(x, op, eval(right));
   }
 
-  return 0;
+  return x;
 }
 
 int main(int argc, char const *argv[]) {
@@ -56,7 +70,7 @@ int main(int argc, char const *argv[]) {
     "                                                       \
       number     : /-?[0-9.]+/ ;                             \
       operator   : '+' | '-' | '*' | '/' ;                  \
-      expr       : (<number> (<operator> <number>)?)+ | '(' <expr>+ (<operator> <expr>+)* ')';  \
+      expr       : <number> | '(' <expr>+ (<operator> <expr>+)* ')';  \
       lispy      : /^/ <expr>+ (<operator> <expr>+)* /$/ ;             \
     ",
     Number, Operator, Expr, Lispy);
