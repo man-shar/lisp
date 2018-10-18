@@ -32,9 +32,11 @@ enum { LVAL_NUM, LVAL_ERR };
 // type is number or error
 // err is the kind of error that occured
 typedef struct {
-  long num;
-  int err;
   int type;
+  union {
+    int err;
+    long num;
+  };
 } lval;
 
 lval create_lval_num(num) {
