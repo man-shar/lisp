@@ -83,6 +83,11 @@ lval eval_op(lval x, char* op, lval y) {
   if (strcmp(op, "+") == 0) { return create_lval_num(x.num + y.num); }
   if (strcmp(op, "-") == 0) { return create_lval_num(x.num - y.num); }
   if (strcmp(op, "*") == 0) { return create_lval_num(x.num * y.num); }
+  if (strcmp(op, "%") == 0) { 
+    return (y.num == 0) ?
+      create_lval_err(ERR_DIV_BY_ZERO)
+      : create_lval_num(x.num % y.num);
+  }
   if (strcmp(op, "/") == 0) { 
     return (y.num == 0) ?
       create_lval_err(ERR_DIV_BY_ZERO)
@@ -178,7 +183,7 @@ int main(int argc, char const *argv[]) {
   mpca_lang(MPCA_LANG_DEFAULT, 
     "                                                       \
       number     : /-?[0-9.]+/ ;                             \
-      operator   : '+' | '-' | '*' | '/' ;                  \
+      operator   : '+' | '-' | '*' | '/' | '%' ;                  \
       function   : \"min\" | \"max\" ;                  \
       expr       : <number> | '(' <expr>+ (<operator> <expr>+)* ')' | <function> <expr>+;  \
       lispy      : /^/ <expr>+ (<operator> <expr>+)* /$/ ;             \
