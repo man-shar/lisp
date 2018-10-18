@@ -35,18 +35,18 @@ typedef struct {
   int type;
   union {
     int err;
-    long num;
+    long double num;
   };
 } lval;
 
-lval create_lval_num(num) {
+lval create_lval_num(long double num) {
   lval v;
   v.type = LVAL_NUM;
   v.num = num;
   return v;
 }
 
-lval create_lval_err(err) {
+lval create_lval_err(int err) {
   lval v;
   v.type = LVAL_ERR;
   v.err = err;
@@ -54,7 +54,7 @@ lval create_lval_err(err) {
 }
 
 lval min(lval *args, int args_length) {
-  long min = args[0].num;
+  long double min = args[0].num;
   for (int i = 0; i < args_length; ++i)
   {
     if (args[i].num < min) {
@@ -65,7 +65,7 @@ lval min(lval *args, int args_length) {
 }
 
 lval max(lval *args, int args_length) {
-  long max = args[0].num;
+  long double max = args[0].num;
   for (int i = 0; i < args_length; ++i)
   {
     if (args[i].num > max) {
@@ -86,7 +86,7 @@ lval eval_op(lval x, char* op, lval y) {
   if (strcmp(op, "%") == 0) { 
     return (y.num == 0) ?
       create_lval_err(ERR_DIV_BY_ZERO)
-      : create_lval_num(x.num % y.num);
+      : create_lval_num((int) x.num % (int) y.num);
   }
   if (strcmp(op, "/") == 0) { 
     return (y.num == 0) ?
@@ -111,9 +111,9 @@ lval eval (mpc_ast_t* t) {
   if (strstr(t->tag, "number")) {
     // atoi returns 0 on error. boo.
     // return atoi(t->contents);
-    // use stol instead
+    // use stold instead
     errno = 0;
-    long x = strtol(t->contents, NULL, 10);
+    long double x = strtold(t->contents, NULL);
     return errno != ERANGE ? create_lval_num(x) : create_lval_err(ERR_BAD_NUM);
   }
 
@@ -149,7 +149,7 @@ lval eval (mpc_ast_t* t) {
 void lval_print(lval x) {
   switch(x.type) {
     case LVAL_NUM:
-      printf("Calculated value: %li\n", x.num);
+      printf("Calculated value: %Lf\n", x.num);
       break;
 
     case LVAL_ERR:
