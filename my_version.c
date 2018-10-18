@@ -25,63 +25,107 @@ void add_history(char* unused) {}
 #include <editline/readline.h>
 #endif
 
-long min(long *args, int args_length) {
-  long min = args[0];
+enum { ERR_DIV_BY_ZERO, ERR_INVALID_OPERATION, ERR_BAD_NUM };
+enum { LVAL_NUM, LVAL_ERR };
+
+// this struct is our representation of all calcuations in our lisp. it can be an error or a valid number
+// type is number or error
+// err is the kind of error that occured
+typedef struct {
+  long num;
+  int err;
+  int type;
+} lval;
+
+lval create_lval_num(num) {
+  lval v;
+  v.type = LVAL_NUM;
+  v.num = num;
+  return v;
+}
+
+lval create_lval_err(err) {
+  lval v;
+  v.type = LVAL_ERR;
+  v.err = err;
+  return v;
+}
+
+lval min(lval *args, int args_length) {
+  long min = args[0].num;
   for (int i = 0; i < args_length; ++i)
   {
-    if (args[i] < min) {
-      min = args[i];
+    if (args[i].num < min) {
+      min = args[i].num;
     }
   }
-  return min;
+  return create_lval_num(min);
 }
 
-long max(long *args, int args_length) {
-  long max = args[0];
+lval max(lval *args, int args_length) {
+  long max = args[0].num;
   for (int i = 0; i < args_length; ++i)
   {
-    if (args[i] > max) {
-      max = args[i];
+    if (args[i].num > max) {
+      max = args[i].num;
     }
   }
-  return max;
+  return create_lval_num(max);
 }
 
-long eval_op(long x, char* op, long y) {
-  if (strcmp(op, "+") == 0) { return x + y; }
-  if (strcmp(op, "-") == 0) { return x - y; }
-  if (strcmp(op, "*") == 0) { return x * y; }
-  if (strcmp(op, "/") == 0) { return x / y; }
-  return 0;
+lval eval_op(lval x, char* op, lval y) {
+  /* If either value is an error return it */
+  if (x.type == LVAL_ERR) { return x; }
+  if (y.type == LVAL_ERR) { return y; }
+
+  if (strcmp(op, "+") == 0) { return create_lval_num(x.num + y.num); }
+  if (strcmp(op, "-") == 0) { return create_lval_num(x.num - y.num); }
+  if (strcmp(op, "*") == 0) { return create_lval_num(x.num * y.num); }
+  if (strcmp(op, "/") == 0) { 
+    return (y.num == 0) ?
+      create_lval_err(ERR_DIV_BY_ZERO)
+      : create_lval_num(x.num / y.num);
+  }
+
+  return create_lval_err(ERR_INVALID_OPERATION);
 }
 
-long eval_func(char *func, long *args, int args_length) {
+lval eval_func(char *func, lval *args, int args_length) {
   if (strcmp(func, "min") == 0) { return min(args, args_length); }
   if (strcmp(func, "max") == 0) { return max(args, args_length); }
 
-  return 0;
+  return create_lval_err(ERR_INVALID_OPERATION);
 }
 
 
 // this evaluates an AST. recursively calling itself to evaluate child ASTs
 // this... works... somehow.. hmm.
-long eval (mpc_ast_t* t) {
+lval eval (mpc_ast_t* t) {
   if (strstr(t->tag, "number")) {
-    return atoi(t->contents);
+    // atoi returns 0 on error. boo.
+    // return atoi(t->contents);
+    // use stol instead
+    errno = 0;
+    long x = strtol(t->contents, NULL, 10);
+    return errno != ERANGE ? create_lval_num(x) : create_lval_err(ERR_BAD_NUM);
   }
 
   // if function, run eval_func with all other as arguments
   if (strstr(t->children[0]->tag, "function")) {
-    long args[t->children_num - 1];
+    lval args[t->children_num - 1];
 
     for (int i = 0; i < (t->children_num - 1); ++i) {
       args[i] = eval(t->children[i + 1]);
+      // if this is an error, fuck it
+      if (args[i].type == LVAL_ERR) {
+        return create_lval_err(ERR_INVALID_OPERATION);
+      }
     }
 
     return eval_func(t->children[0]->contents, args, (t->children_num - 1));
   }
 
-  long x = eval(t->children[1]);
+  lval x = eval(t->children[1]);
 
   int count = t->children_num;
 
@@ -93,6 +137,31 @@ long eval (mpc_ast_t* t) {
   }
 
   return x;
+}
+
+void lval_print(lval x) {
+  switch(x.type) {
+    case LVAL_NUM:
+      printf("Calculated value: %li\n", x.num);
+      break;
+
+    case LVAL_ERR:
+      switch(x.err) {
+        case ERR_INVALID_OPERATION:
+          puts("Invalid Operation!");
+          break;
+        case ERR_DIV_BY_ZERO:
+          puts("Division by zero!");
+          break;
+        case ERR_BAD_NUM:
+          puts("Invalid Number!");
+          break;
+      }
+      break;
+
+    default:
+      puts("Something went wrong.");
+  }
 }
 
 int main(int argc, char const *argv[]) {
@@ -135,8 +204,9 @@ int main(int argc, char const *argv[]) {
 
     if (mpc_parse("<stdin>", input, Lispy, &r)) {
       mpc_ast_print(r.output);
-      long result = eval(r.output);
-      printf("%li\n", result);
+      lval result = eval(r.output);
+      lval_print(result);
+      // printf("%li\n", result);
 
       mpc_ast_delete(r.output);
     } else {
